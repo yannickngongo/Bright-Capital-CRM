@@ -14,7 +14,11 @@ export default async function handler(req, res) {
       message: 'Email test.',
       createdAt: new Date().toISOString(),
     });
-    res.json({ success: true });
+    res.json({
+      success: true,
+      sentFrom: process.env.GMAIL_USER,
+      sentTo: process.env.NOTIFY_EMAIL || 'yannickngongo14@gmail.com',
+    });
   } catch (err) {
     res.json({ success: false, error: err.message, code: err.code });
   }

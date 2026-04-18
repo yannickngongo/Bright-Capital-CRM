@@ -3,21 +3,21 @@ export default async function handler(req, res) {
 
   const info = {
     isVercel: !!process.env.VERCEL,
-    hasGithubToken: !!process.env.GITHUB_TOKEN,
+    hasGithubToken: !!process.env.GH_TOKEN,
     hasUpstash: !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN),
     storageBackend: process.env.UPSTASH_REDIS_REST_URL
       ? 'upstash'
-      : process.env.GITHUB_TOKEN
+      : process.env.GH_TOKEN
         ? 'gist'
         : 'local-tmp',
   };
 
   // Test GitHub token if present
-  if (process.env.GITHUB_TOKEN) {
+  if (process.env.GH_TOKEN) {
     try {
       const r = await fetch('https://api.github.com/gists?per_page=5', {
         headers: {
-          Authorization: `token ${process.env.GITHUB_TOKEN}`,
+          Authorization: `token ${process.env.GH_TOKEN}`,
           Accept: 'application/vnd.github.v3+json',
           'User-Agent': 'BrightCapitalCRM/1.0',
         },

@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bright Capital — CRM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'bc-navy': '#253B80', 'bc-blue': '#169BD7', 'bc-teal': '#00BCD4',
+            'bc-dark': '#1A2450', 'bc-heading': '#3C3950', 'bc-body': '#5F727F',
+            'bc-light': '#F4F6F7', 'bc-border': '#DFE5E8',
+          },
+          fontFamily: { heading: ['Montserrat', 'sans-serif'], body: ['Source Sans 3', 'sans-serif'] },
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Source Sans 3', sans-serif; background: #F4F6F7; }
+
+    .status-new       { background:#EBF5FD; color:#169BD7; border:1px solid #BDE3F5; }
+    .status-contacted { background:#FEF3C7; color:#D97706; border:1px solid #FDE68A; }
+    .status-scheduled { background:#EDE9FE; color:#7C3AED; border:1px solid #DDD6FE; }
+    .status-qualified { background:#E6FAF9; color:#00897B; border:1px solid #B2DFDB; }
+    .status-closed    { background:#D1FAE5; color:#059669; border:1px solid #A7F3D0; }
+    .status-lost      { background:#F3F4F6; color:#6B7280; border:1px solid #E5E7EB; }
+
+    .drawer { transform: translateX(100%); transition: transform 0.28s cubic-bezier(0.4,0,0.2,1); }
+    .drawer.open { transform: translateX(0); }
+
+    .lead-row { transition: background 0.15s ease; cursor: pointer; }
+    .lead-row:hover { background: #EBF5FD; }
+    .lead-row.active { background: #EBF5FD; box-shadow: inset 3px 0 0 #169BD7; }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-thumb { background: #DFE5E8; border-radius: 3px; }
+
+    input, select, textarea {
+      font-family: 'Source Sans 3', sans-serif;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: #169BD7 !important;
+      box-shadow: 0 0 0 3px rgba(22,155,215,0.1);
+      outline: none;
+    }
+  </style>
+</head>
+<body class="font-body antialiased">
+
+<!-- ── LOGIN SCREEN ─────────────────────────────────────────────────────────── -->
+<div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center" style="background:#253B80;">
+  <div class="bg-white w-full max-w-sm mx-4" style="border-top:4px solid #169BD7;">
+    <div class="px-10 py-10">
+      <div class="flex items-center gap-3 mb-8">
+        <div class="w-9 h-9 bg-bc-navy flex items-center justify-center shrink-0">
+          <span class="text-white text-[11px] font-heading font-bold tracking-widest">BC</span>
+        </div>
+        <div>
+          <p class="font-heading font-bold text-bc-heading text-[13px] uppercase tracking-[0.06em] leading-none">Bright Capital</p>
+          <p class="text-bc-body text-[11px] tracking-wide mt-0.5">CRM Dashboard</p>
+        </div>
+      </div>
+      <div class="mb-5">
+        <label class="block font-heading font-bold text-bc-body text-[11px] uppercase tracking-[0.08em] mb-2">Password</label>
+        <input id="passwordInput" type="password" placeholder="Enter CRM password"
+          class="w-full border border-bc-border px-4 py-3 text-bc-heading text-[15px]"
+          onkeydown="if(event.key==='Enter') login()">
+        <p id="loginError" class="hidden text-red-500 text-[12px] mt-2 font-body">Incorrect password. Try again.</p>
+      </div>
+      <button onclick="login()" class="w-full bg-bc-navy text-white font-heading font-bold text-[12px] uppercase tracking-[0.1em] py-3.5 hover:bg-bc-dark transition-colors duration-200">
+        Access CRM
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ───────────────────────────────────────────────────────────────── -->
+<div id="mainApp" class="hidden min-h-screen">
+
+  <!-- HEADER -->
+  <header class="fixed top-0 left-0 right-0 z-40 bg-bc-navy">
+    <div class="px-6 md:px-8 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-7 h-7 border border-white/25 flex items-center justify-center shrink-0">
+          <span class="text-white text-[9px] font-heading font-bold tracking-widest">BC</span>
+        </div>
+        <span class="font-heading font-bold text-white text-[13px] uppercase tracking-[0.06em]">Bright Capital</span>
+        <span class="text-white/30 text-[12px] font-body hidden md:inline">/ CRM</span>
+      </div>
+      <div class="flex items-center gap-5">
+        <button onclick="loadLeads()" id="refreshBtn"
+          class="text-white/50 hover:text-white font-heading font-bold text-[10px] uppercase tracking-[0.08em] transition-colors duration-200 flex items-center gap-1.5">
+          <svg id="refreshIcon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Refresh
+        </button>
+        <button onclick="logout()" class="text-white/50 hover:text-white font-heading font-bold text-[10px] uppercase tracking-[0.08em] transition-colors duration-200">
+          Sign Out
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="pt-14">
+
+    <!-- STATS BAR -->
+    <div class="bg-white border-b border-bc-border px-6 md:px-8 py-3">
+      <div id="statsBar" class="flex flex-wrap gap-x-1 gap-y-2"></div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="px-6 md:px-8 pt-5 pb-4 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+      <div class="flex gap-2 flex-1">
+        <div class="relative flex-1 max-w-sm">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-bc-body pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35" stroke-linecap="round" stroke-width="2"/>
+          </svg>
+          <input id="searchInput" type="text" placeholder="Search by name, email, company…"
+            class="w-full border border-bc-border pl-9 pr-4 py-2.5 text-bc-heading text-[14px] bg-white"
+            oninput="applyFilters()">
+        </div>
+        <select id="statusFilter" class="border border-bc-border px-3 py-2.5 text-bc-heading text-[14px] bg-white" onchange="applyFilters()">
+          <option value="">All Statuses</option>
+          <option value="new">New</option>
+          <option value="contacted">Contacted</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="qualified">Qualified</option>
+          <option value="closed">Closed</option>
+          <option value="lost">Lost</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-3">
+        <span id="lastUpdated" class="text-bc-body text-[12px] hidden md:block"></span>
+        <button onclick="exportCSV()"
+          class="flex items-center gap-2 border border-bc-border px-4 py-2.5 font-heading font-bold text-bc-body text-[11px] uppercase tracking-[0.08em] hover:border-bc-navy hover:text-bc-navy transition-colors duration-200">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          Export CSV
+        </button>
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="px-6 md:px-8 pb-12">
+      <div class="bg-white border border-bc-border overflow-hidden">
+        <div class="grid border-b border-bc-border bg-bc-light px-5 py-3" style="grid-template-columns:110px 1fr 1fr 130px 110px 120px;">
+          <div class="font-heading font-bold text-bc-body text-[10px] uppercase tracking-[0.1em]">Date</div>
+          <div class="font-heading font-bold text-bc-body text-[10px] uppercase tracking-[0.1em]">Name</div>
+          <div class="font-heading font-bold text-bc-body text-[10px] uppercase tracking-[0.1em] hidden md:block">Company</div>
+          <div class="font-heading font-bold text-bc-body text-[10px] uppercase tracking-[0.1em] hidden md:block">Portfolio</div>
+          <div class="font-heading font-bold text-bc-body text-[10px] uppercase tracking-[0.1em] hidden md:block">Markets</div>
+          <div class="font-heading font-bold text-bc-body text-[10px] uppercase tracking-[0.1em]">Status</div>
+        </div>
+        <div id="leadsTable"></div>
+        <div id="emptyState" class="hidden text-center py-16 px-6">
+          <svg class="w-10 h-10 text-bc-border mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          <p class="font-heading font-bold text-bc-body text-[13px] uppercase tracking-wide">No leads yet</p>
+          <p class="text-bc-body text-[13px] mt-1">Submissions from your contact form will appear here.</p>
+        </div>
+        <div id="errorState" class="hidden text-center py-12 px-6">
+          <p class="font-heading font-bold text-red-400 text-[13px] uppercase tracking-wide">Cannot reach backend</p>
+          <p class="text-bc-body text-[13px] mt-1">Make sure the server is running: <code class="bg-bc-light px-2 py-0.5 text-bc-heading">node server.mjs</code></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── DRAWER OVERLAY ─────────────────────────────────────────────────────────── -->
+<div id="drawerOverlay" class="hidden fixed inset-0 bg-black/20 z-50 backdrop-blur-[1px]" onclick="closeDrawer()"></div>
+
+<!-- ── DETAIL DRAWER ──────────────────────────────────────────────────────────── -->
+<aside id="detailDrawer" class="drawer fixed top-0 right-0 h-full w-full md:w-[460px] bg-white z-50 flex flex-col border-l border-bc-border shadow-2xl">
+  <div class="flex items-center justify-between px-6 py-4 border-b border-bc-border bg-bc-light shrink-0">
+    <p class="font-heading font-bold text-bc-heading text-[12px] uppercase tracking-[0.06em]">Lead Details</p>
+    <button onclick="closeDrawer()" class="w-7 h-7 flex items-center justify-center text-bc-body hover:text-bc-heading transition-colors duration-150">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="flex-1 overflow-y-auto" id="drawerContent"></div>
+</aside>
+
+<script>
+  const API = 'http://localhost:3001';
+  let allLeads = [];
+  let activeId = null;
+  let pwdHash = null;
+
+  const STATUS_LABELS = { new:'New', contacted:'Contacted', scheduled:'Scheduled', qualified:'Qualified', closed:'Closed', lost:'Lost' };
+  const STATUS_COLORS = { new:'#169BD7', contacted:'#D97706', scheduled:'#7C3AED', qualified:'#00897B', closed:'#059669', lost:'#9CA3AF' };
+
+  // ── AUTH ────────────────────────────────────────────────────────────────────
+  async function init() {
+    try {
+      const cfg = await fetch(`${API}/api/config`).then(r => r.json());
+      pwdHash = cfg.pwdHash;
+    } catch { pwdHash = sha256('BrightCapital2025'); }
+
+    const stored = localStorage.getItem('bc_crm_auth');
+    if (stored && stored === pwdHash) enterApp();
+  }
+
+  async function login() {
+    const val = document.getElementById('passwordInput').value;
+    const hash = await sha256(val);
+    if (hash === pwdHash) {
+      localStorage.setItem('bc_crm_auth', hash);
+      document.getElementById('loginError').classList.add('hidden');
+      enterApp();
+    } else {
+      document.getElementById('loginError').classList.remove('hidden');
+    }
+  }
+
+  function enterApp() {
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+    loadLeads();
+  }
+
+  function logout() {
+    localStorage.removeItem('bc_crm_auth');
+    location.reload();
+  }
+
+  async function sha256(str) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  // ── DATA ────────────────────────────────────────────────────────────────────
+  async function loadLeads() {
+    document.getElementById('refreshIcon').style.animation = 'spin 1s linear infinite';
+    try {
+      const res = await fetch(`${API}/api/leads`);
+      if (!res.ok) throw new Error();
+      allLeads = await res.json();
+      document.getElementById('errorState').classList.add('hidden');
+      document.getElementById('lastUpdated').textContent = `Updated ${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`;
+      renderStats();
+      applyFilters();
+      if (activeId) refreshDrawer();
+    } catch {
+      document.getElementById('errorState').classList.remove('hidden');
+      document.getElementById('leadsTable').innerHTML = '';
+      document.getElementById('emptyState').classList.add('hidden');
+    } finally {
+      document.getElementById('refreshIcon').style.animation = '';
+    }
+  }
+
+  async function patchLead(id, data) {
+    const res = await fetch(`${API}/api/leads/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const updated = await res.json();
+    const idx = allLeads.findIndex(l => l.id === id);
+    if (idx !== -1) allLeads[idx] = updated;
+    return updated;
+  }
+
+  async function deleteLead(id) {
+    if (!confirm('Delete this lead permanently?')) return;
+    await fetch(`${API}/api/leads/${id}`, { method: 'DELETE' });
+    allLeads = allLeads.filter(l => l.id !== id);
+    closeDrawer();
+    renderStats();
+    applyFilters();
+  }
+
+  // ── RENDER ──────────────────────────────────────────────────────────────────
+  function renderStats() {
+    const c = { total:allLeads.length, new:0, contacted:0, scheduled:0, qualified:0, closed:0, lost:0 };
+    allLeads.forEach(l => { if (c[l.status] !== undefined) c[l.status]++; });
+
+    const items = [
+      { label:'Total',     key:'total',     color:'#253B80' },
+      { label:'New',       key:'new',       color:'#169BD7' },
+      { label:'Contacted', key:'contacted', color:'#D97706' },
+      { label:'Scheduled', key:'scheduled', color:'#7C3AED' },
+      { label:'Qualified', key:'qualified', color:'#00897B' },
+      { label:'Closed',    key:'closed',    color:'#059669' },
+      { label:'Lost',      key:'lost',      color:'#9CA3AF' },
+    ];
+
+    document.getElementById('statsBar').innerHTML = items.map((item, i) => `
+      ${i > 0 ? '<span class="hidden md:block self-center text-bc-border text-[16px]">·</span>' : ''}
+      <button onclick="filterByStatus('${item.key === 'total' ? '' : item.key}')"
+        class="flex items-center gap-2 px-3 py-1.5 hover:bg-bc-light rounded transition-colors duration-150 group">
+        <span class="font-heading font-extrabold text-[22px] leading-none" style="color:${item.color}">${c[item.key]}</span>
+        <span class="font-heading font-bold text-bc-body text-[10px] uppercase tracking-[0.08em] group-hover:text-bc-navy transition-colors">${item.label}</span>
+      </button>
+    `).join('');
+  }
+
+  function renderTable(leads) {
+    if (leads.length === 0) {
+      document.getElementById('leadsTable').innerHTML = '';
+      document.getElementById('emptyState').classList.remove('hidden');
+      return;
+    }
+    document.getElementById('emptyState').classList.add('hidden');
+    document.getElementById('leadsTable').innerHTML = leads.map(lead => `
+      <div class="lead-row grid border-b border-bc-border px-5 py-3.5 items-center ${lead.id === activeId ? 'active' : ''}"
+        style="grid-template-columns:110px 1fr 1fr 130px 110px 120px;"
+        onclick="openDrawer('${esc(lead.id)}')">
+        <div class="text-bc-body text-[13px]">${fmtDate(lead.createdAt)}</div>
+        <div>
+          <p class="font-heading font-bold text-bc-heading text-[13px] leading-tight">${esc(lead.firstName)} ${esc(lead.lastName)}</p>
+          <p class="text-bc-body text-[12px] truncate max-w-[180px]">${esc(lead.email)}</p>
+        </div>
+        <div class="hidden md:block text-bc-heading text-[13px] truncate pr-4">${esc(lead.company || '—')}</div>
+        <div class="hidden md:block text-bc-body text-[13px]">${esc(lead.units || '—')}</div>
+        <div class="hidden md:block text-bc-body text-[12px] truncate pr-2">${esc(lead.markets || '—')}</div>
+        <div>${badge(lead.status)}</div>
+      </div>
+    `).join('');
+  }
+
+  function applyFilters() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const s = document.getElementById('statusFilter').value;
+    const filtered = allLeads.filter(l => {
+      const text = `${l.firstName} ${l.lastName} ${l.email} ${l.company} ${l.markets}`.toLowerCase();
+      return (!q || text.includes(q)) && (!s || l.status === s);
+    });
+    renderTable(filtered);
+  }
+
+  function filterByStatus(s) {
+    document.getElementById('statusFilter').value = s;
+    applyFilters();
+  }
+
+  function badge(status) {
+    return `<span class="status-${status} font-heading font-bold text-[9px] uppercase tracking-[0.08em] px-2 py-1 whitespace-nowrap">${STATUS_LABELS[status] || status}</span>`;
+  }
+
+  // ── DRAWER ──────────────────────────────────────────────────────────────────
+  function openDrawer(id) {
+    activeId = id;
+    refreshDrawer();
+    document.getElementById('detailDrawer').classList.add('open');
+    document.getElementById('drawerOverlay').classList.remove('hidden');
+    document.querySelectorAll('.lead-row').forEach(r => {
+      r.classList.toggle('active', r.getAttribute('onclick').includes(`'${id}'`));
+    });
+  }
+
+  function refreshDrawer() {
+    const lead = allLeads.find(l => l.id === activeId);
+    if (!lead) return;
+    document.getElementById('drawerContent').innerHTML = drawerHtml(lead);
+  }
+
+  function drawerHtml(lead) {
+    return `
+    <div class="p-6">
+      <!-- Identity -->
+      <div class="mb-5 pb-5 border-b border-bc-border">
+        <div class="flex items-start justify-between gap-3 mb-1">
+          <h2 class="font-heading font-extrabold text-bc-heading text-[21px] leading-tight">${esc(lead.firstName)} ${esc(lead.lastName)}</h2>
+          ${badge(lead.status)}
+        </div>
+        <a href="mailto:${esc(lead.email)}" class="text-bc-blue text-[14px] hover:underline block">${esc(lead.email)}</a>
+        ${lead.company ? `<p class="text-bc-body text-[14px] mt-0.5">${esc(lead.company)}</p>` : ''}
+        <p class="text-bc-body text-[12px] mt-2">Received ${fmtDateFull(lead.createdAt)}</p>
+      </div>
+
+      <!-- Quick stats -->
+      <div class="grid grid-cols-2 gap-3 mb-5">
+        ${lead.units ? `
+        <div class="bg-bc-light p-4">
+          <p class="font-heading font-bold text-bc-body text-[9px] uppercase tracking-[0.1em] mb-1">Portfolio Size</p>
+          <p class="font-heading font-bold text-bc-heading text-[14px]">${esc(lead.units)}</p>
+        </div>` : ''}
+        ${lead.markets ? `
+        <div class="bg-bc-light p-4">
+          <p class="font-heading font-bold text-bc-body text-[9px] uppercase tracking-[0.1em] mb-1">Primary Markets</p>
+          <p class="font-heading font-bold text-bc-heading text-[14px]">${esc(lead.markets)}</p>
+        </div>` : ''}
+      </div>
+
+      <!-- Message -->
+      ${lead.message ? `
+      <div class="mb-5 border-l-[3px] border-bc-blue pl-4 py-1">
+        <p class="font-heading font-bold text-bc-body text-[9px] uppercase tracking-[0.1em] mb-2">Their Message</p>
+        <p class="text-bc-body text-[14px] leading-relaxed">${esc(lead.message).replace(/\n/g,'<br>')}</p>
+      </div>` : ''}
+
+      <!-- Status -->
+      <div class="mb-5">
+        <p class="font-heading font-bold text-bc-body text-[9px] uppercase tracking-[0.1em] mb-2">Pipeline Status</p>
+        <div class="grid grid-cols-3 gap-2" id="statusPicker">
+          ${['new','contacted','scheduled','qualified','closed','lost'].map(s => `
+            <button onclick="setStatus('${lead.id}','${s}')"
+              class="status-btn py-2 px-3 border font-heading font-bold text-[9px] uppercase tracking-[0.08em] transition-all duration-150 ${lead.status === s ? `status-${s}` : 'border-bc-border text-bc-body hover:border-bc-navy hover:text-bc-navy'}">
+              ${STATUS_LABELS[s]}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="mb-6">
+        <p class="font-heading font-bold text-bc-body text-[9px] uppercase tracking-[0.1em] mb-2">Notes</p>
+        <textarea id="notesTA" rows="5" placeholder="Add internal notes about this lead…"
+          class="w-full border border-bc-border px-4 py-3 text-bc-heading text-[14px] resize-none">${esc(lead.notes || '')}</textarea>
+        <button id="saveNoteBtn" onclick="saveNotes('${lead.id}')"
+          class="mt-2 w-full bg-bc-navy text-white font-heading font-bold text-[11px] uppercase tracking-[0.1em] py-2.5 hover:bg-bc-dark transition-colors duration-200">
+          Save Notes
+        </button>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex gap-2 border-t border-bc-border pt-5">
+        <a href="mailto:${esc(lead.email)}"
+          class="flex-1 text-center border border-bc-blue text-bc-blue font-heading font-bold text-[10px] uppercase tracking-[0.08em] py-2.5 hover:bg-bc-blue hover:text-white transition-colors duration-200">
+          Send Email
+        </a>
+        <button onclick="deleteLead('${lead.id}')"
+          class="px-4 py-2.5 border border-red-200 text-red-400 font-heading font-bold text-[10px] uppercase tracking-[0.08em] hover:bg-red-50 hover:border-red-400 hover:text-red-600 transition-colors duration-200">
+          Delete
+        </button>
+      </div>
+    </div>`;
+  }
+
+  async function setStatus(id, status) {
+    await patchLead(id, { status });
+    renderStats();
+    applyFilters();
+    refreshDrawer();
+  }
+
+  async function saveNotes(id) {
+    const notes = document.getElementById('notesTA').value;
+    await patchLead(id, { notes });
+    const btn = document.getElementById('saveNoteBtn');
+    btn.textContent = 'Saved ✓';
+    btn.style.background = '#059669';
+    setTimeout(() => { btn.textContent = 'Save Notes'; btn.style.background = ''; }, 2000);
+  }
+
+  function closeDrawer() {
+    activeId = null;
+    document.getElementById('detailDrawer').classList.remove('open');
+    document.getElementById('drawerOverlay').classList.add('hidden');
+    document.querySelectorAll('.lead-row').forEach(r => r.classList.remove('active'));
+  }
+
+  // ── EXPORT ──────────────────────────────────────────────────────────────────
+  function exportCSV() {
+    const headers = ['Date','First Name','Last Name','Email','Company','Portfolio Size','Markets','Status','Notes','Message'];
+    const rows = allLeads.map(l => [
+      fmtDate(l.createdAt), l.firstName, l.lastName, l.email, l.company,
+      l.units, l.markets, l.status, l.notes, l.message
+    ].map(v => `"${(v||'').replace(/"/g,'""')}"`));
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })),
+      download: `bright-capital-leads-${new Date().toISOString().split('T')[0]}.csv`,
+    });
+    a.click();
+  }
+
+  // ── UTILS ────────────────────────────────────────────────────────────────────
+  function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function fmtDate(iso) {
+    return new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'2-digit' });
+  }
+  function fmtDateFull(iso) {
+    return new Date(iso).toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit' });
+  }
+
+  // spin keyframe for refresh icon
+  const style = document.createElement('style');
+  style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+  document.head.appendChild(style);
+
+  init();
+</script>
+</body>
+</html>
